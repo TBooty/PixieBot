@@ -35,7 +35,7 @@ namespace PixieBot.Services
             string discordToken = Environment.GetEnvironmentVariable("discord_token");
             if (string.IsNullOrWhiteSpace(discordToken))
             {
-                throw new Exception("Please enter your bot's token into the bot json file in the config directory.");
+                throw new Exception("No discord tokens found in environment variables");
             }
             _log.LogMessage($"{_config["name"]} starting up...");
 

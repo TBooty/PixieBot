@@ -12,23 +12,17 @@ namespace PixieBot.Services
 {
     public class HttpService
     {
-        private readonly DiscordSocketClient _discord;
-        private readonly CommandService _commands;
         private readonly HttpClient _client = new HttpClient();
 
 
-        public HttpService(DiscordSocketClient discord, CommandService commands)
+        public HttpService()
         {
-            _discord = discord;
-            _commands = commands;
-
             var handler = new HttpClientHandler()
             {
                 AllowAutoRedirect = true
             };
 
             _client = new HttpClient(handler);
-            _client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36");
         }
 
 

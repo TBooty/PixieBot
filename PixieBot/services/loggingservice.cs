@@ -16,14 +16,10 @@ namespace PixieBot.Services
     {
         private readonly DiscordSocketClient _discord;
         private readonly CommandService _commands;
-        private string _logDirectory { get; }
-        public string _logFile { get; }
         private readonly ILogger _logger;
 
         public LoggingService(DiscordSocketClient discord, CommandService commands, IConfigurationRoot config, IServiceProvider services)
         {
-            _logDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
-            _logFile = Path.Combine(_logDirectory, $"{config["Name"]}_{DateTime.Now.ToString("yyyy-MM-dd")}.txt");
             _logger = services.GetRequiredService<ILogger<LoggingService>>();
             _discord = discord;
             _commands = commands;
