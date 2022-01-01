@@ -3,6 +3,7 @@ using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using System;
 using System.Diagnostics;
@@ -26,7 +27,6 @@ namespace PixieBot
             Console.Out.WriteLineAsync("Bot Name:          " + "Pixie");
             Console.Out.WriteLineAsync("Bot Version:       " + FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion);
             Console.Out.WriteLineAsync("Bot Prefix:        " + Environment.GetEnvironmentVariable("bot_prefix"));
-
             Console.Out.WriteLineAsync($"Meow");
         }
 
@@ -49,8 +49,33 @@ namespace PixieBot
             var provider = services.BuildServiceProvider();
             provider.GetRequiredService<Services.LoggingService>();
             provider.GetRequiredService<Services.CommandHandler>();
-            await provider.GetRequiredService<Services.BootstrapService>().StartAsync();
+
+            await ConnectBotToDiscord(provider);
             await Task.Delay(-1);
+        }
+
+        private async Task ConnectBotToDiscord(IServiceProvider services)
+        {
+            var _log = services.GetRequiredService<ILogger<Bootstrap>>();
+            var discord = services.GetRequiredService<DiscordSocketClient>();
+            var command_service = services.GetRequiredService<CommandService>();
+            // Get the discord token from environment variables
+            string discordToken = Environment.GetEnvironmentVariable("discord_token");
+            if (string.IsNullOrWhiteSpace(discordToken))
+            {
+                throw new Exception("No discord tokens found in environment variables");
+            }
+            _log.LogInformation("Pixie bot starting up");
+
+            // Login to discord
+            await discord.LoginAsync(Discord.TokenType.Bot, discordToken);
+
+            // Connect to the websocket
+            await discord.StartAsync();
+
+            // Load commands and modules into the command service
+            await command_service.AddModulesAsync(Assembly.GetEntryAssembly(), services);
+            _log.LogInformation($"Pixie bot started!");
         }
 
         private void ConfigureServices(IServiceCollection services)
@@ -66,7 +91,6 @@ namespace PixieBot
                 DefaultRunMode = RunMode.Async,
             }))
             .AddSingleton<Services.CommandHandler>()
-            .AddSingleton<Services.BootstrapService>()
             .AddLogging(configure => configure.AddSerilog())
             .AddSingleton<Services.LoggingService>()
             .AddSingleton<Services.HttpService>()
