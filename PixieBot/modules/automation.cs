@@ -2,6 +2,8 @@
 using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using PixieBot.modules;
 using PixieBot.Services;
@@ -9,10 +11,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace PixieBot.Modules
 {
-    [Name("Home-Auto")]
     public class AutomationModule : ModuleBase<SocketCommandContext>
     {
         private readonly IConfigurationRoot _config;
@@ -20,8 +22,9 @@ namespace PixieBot.Modules
         private readonly CommandService _commands;
         private readonly HttpService _httpService;
         private readonly string _goveeApiKey;
+        private readonly ILogger _log;
 
-        public AutomationModule(IConfigurationRoot config, DiscordSocketClient discord, CommandService commands, HttpService httpService)
+        public AutomationModule(IConfigurationRoot config, DiscordSocketClient discord, CommandService commands, HttpService httpService, IServiceProvider services)
         {
             _config = config;
             _discord = discord;
@@ -29,9 +32,10 @@ namespace PixieBot.Modules
             _httpService = httpService;
             _discord.ButtonExecuted += ButtonExecuted;
             _goveeApiKey = Environment.GetEnvironmentVariable("govee_api_key");
-
+            _log = services.GetRequiredService<ILogger<AutomationModule>>();
         }
 
+        //todo cache results of this outside the module since it's disposed after calling
         [Command("DeviceList")]
         [Summary("List devices on Govee")]
         public async Task DeviceList()
@@ -47,27 +51,23 @@ namespace PixieBot.Modules
             var jsonData = _httpService.GetRawJSONDataFromUrlAsync(url, headers).Result;
 
             var button_builder = new ComponentBuilder();
-            try
+            var blah = JsonConvert.DeserializeObject(jsonData.ToString());
+            foreach (var item in blah.data.devices)
             {
-                var blah = JsonConvert.DeserializeObject(jsonData.ToString());
-                foreach (var item in blah.data.devices)
-                {
-                    button_builder.WithButton(item.deviceName.ToString(), item.deviceName.ToString(), ButtonStyle.Primary);
-                }
+                string model_mac_device_string = item.device.ToString() + " " + item.model.ToString();
+                button_builder.WithButton(item.deviceName.ToString(), model_mac_device_string, ButtonStyle.Primary);
             }
-            catch (System.Exception)
-            {
+            var buttons = button_builder.Build();
+            await ReplyAsync(message: "Current Device list below", components: buttons);
 
-                throw;
-            }
-            var yay = button_builder.Build();
-            
 
         }
 
-
-        private async Task UpdateDevice()
+        //todo pull from cache and then negate current state
+        private async Task UpdateDevice(string device)
         {
+            var device_mac = device.Split(' ')[0];
+            var model = device.Split(' ')[1];
             string url = $"https://developer-api.govee.com/v1/devices/control";
             var headers = new Dictionary<string, string>()
             {
@@ -93,36 +93,7 @@ namespace PixieBot.Modules
         {
             if (component.HasResponded == false)
             {
-                switch (component.Data.CustomId)
-                {
-                    case "Tv lights":
-                        {
-                            await UpdateDevice();
-                        }
-                        break;
-                    case "WhiteNoiseMachine":
-                        {
-                            await ReplyAsync("Device List");
-                        }
-                        break;
-                    case "Bedroom lights":
-                        {
-                            await ReplyAsync("Device List");
-                        }
-                        break;
-                    case "Paint light":
-                        {
-                            await ReplyAsync("Device List");
-                        }
-                        break;
-                    case "Paint light 2":
-                        {
-                            await ReplyAsync("Device List");
-                        }
-                        break;
-
-                }
-
+                await UpdateDevice(component.Data.CustomId);
             }
         }
     }

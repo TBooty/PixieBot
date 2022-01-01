@@ -1,6 +1,8 @@
 ﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using PixieBot.Services;
 using System;
 using System.Collections.Generic;
@@ -13,16 +15,18 @@ using Victoria.Responses.Search;
 
 namespace PixieBot.Modules
 {
-    public class Audio : ModuleBase<SocketCommandContext>
+    public class AudioModule : ModuleBase<SocketCommandContext>
     {
         private readonly LavaNode _lavaNode;
         private readonly AudioService _audioService;
         private static readonly IEnumerable<int> Range = Enumerable.Range(1900, 2000);
+        private readonly ILogger _log;
 
-        public Audio(LavaNode lavaNode, AudioService audioService)
+        public AudioModule(LavaNode lavaNode, AudioService audioService, IServiceProvider services)
         {
             _lavaNode = lavaNode;
             _audioService = audioService;
+            _log = services.GetRequiredService<ILogger<AutomationModule>>();
         }
 
         [Command("Join")]
@@ -48,7 +52,8 @@ namespace PixieBot.Modules
             }
             catch (Exception exception)
             {
-                await ReplyAsync(exception.Message);
+                _log.LogError(exception: exception, message: "Failed to join voice channel");
+                await ReplyAsync("Failed to join voice channel");
             }
         }
 
@@ -75,7 +80,8 @@ namespace PixieBot.Modules
             }
             catch (Exception exception)
             {
-                await ReplyAsync(exception.Message);
+                _log.LogError(exception: exception, message: "Failed to leave voice channel");
+                await ReplyAsync("Failed to leave voice channel");
             }
         }
 
@@ -121,10 +127,19 @@ namespace PixieBot.Modules
             }
 
             player.Queue.TryDequeue(out var lavaTrack);
-            await player.PlayAsync(x => {
-                x.Track = lavaTrack;
-                x.ShouldPause = false;
-            });
+            try
+            {
+                await player.PlayAsync(x => {
+                    x.Track = lavaTrack;
+                    x.ShouldPause = false;
+                });
+            }
+            catch (Exception exception)
+            {
+                _log.LogError(exception: exception, message: "Failed to play track");
+                await ReplyAsync("Failed to play song");
+            }
+            
         }
 
         [Command("Pause")]
@@ -149,6 +164,7 @@ namespace PixieBot.Modules
             }
             catch (Exception exception)
             {
+                _log.LogError(exception: exception, message: "Failed to pause track");
                 await ReplyAsync(exception.Message);
             }
         }
@@ -175,7 +191,8 @@ namespace PixieBot.Modules
             }
             catch (Exception exception)
             {
-                await ReplyAsync(exception.Message);
+                _log.LogError(exception: exception, message: "Failed to resume track");
+                await ReplyAsync("Failed to resume track");
             }
         }
 
@@ -201,7 +218,8 @@ namespace PixieBot.Modules
             }
             catch (Exception exception)
             {
-                await ReplyAsync(exception.Message);
+                _log.LogError(exception: exception, message: "Failed to stop track");
+                await ReplyAsync("Failed to stop track");
             }
         }
 
@@ -248,7 +266,8 @@ namespace PixieBot.Modules
             }
             catch (Exception exception)
             {
-                await ReplyAsync(exception.Message);
+                _log.LogError(exception: exception, message: "Failed to skip track");
+                await ReplyAsync("Failed to skip track");
             }
 
             _audioService.VoteQueue.Clear();
@@ -276,7 +295,8 @@ namespace PixieBot.Modules
             }
             catch (Exception exception)
             {
-                await ReplyAsync(exception.Message);
+                _log.LogError(exception: exception, message: "Failed to seek track");
+                await ReplyAsync("Failed to seek track");
             }
         }
 
@@ -296,7 +316,8 @@ namespace PixieBot.Modules
             }
             catch (Exception exception)
             {
-                await ReplyAsync(exception.Message);
+                _log.LogError(exception: exception, message: "Failed to change volume");
+                await ReplyAsync("Failed to change volume");
             }
         }
 
@@ -348,7 +369,6 @@ namespace PixieBot.Modules
                 await ReplyAsync($"No lyrics found for {player.Track.Title}");
                 return;
             }
-            //todo add error handling for no results found
             await SendLyricsAsync(lyrics);
         }
 

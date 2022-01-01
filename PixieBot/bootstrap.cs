@@ -59,13 +59,14 @@ namespace PixieBot
             var _log = services.GetRequiredService<ILogger<Bootstrap>>();
             var discord = services.GetRequiredService<DiscordSocketClient>();
             var command_service = services.GetRequiredService<CommandService>();
+
             // Get the discord token from environment variables
             string discordToken = Environment.GetEnvironmentVariable("discord_token");
             if (string.IsNullOrWhiteSpace(discordToken))
             {
                 throw new Exception("No discord tokens found in environment variables");
             }
-            _log.LogInformation("Pixie bot starting up");
+            _log.LogInformation("Logging into Discord...");
 
             // Login to discord
             await discord.LoginAsync(Discord.TokenType.Bot, discordToken);
