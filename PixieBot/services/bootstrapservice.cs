@@ -48,21 +48,7 @@ namespace PixieBot.Services
             await _discord.StartAsync();
 
             // Load commands and modules into the command service
-            var assemblies = Assembly.GetEntryAssembly();
-            foreach (var assembly in assemblies.GetModules())
-            {
-                var types = assembly.GetTypes();
-                foreach (var type in types)
-                {
-                    if (type.Namespace != null)
-                    {
-                        if (type.Namespace.Contains("PixieBot.Modules") && type.IsSubclassOf(typeof(ModuleBase<SocketCommandContext>)))
-                        {
-                            await _commands.AddModuleAsync(type, _provider);
-                        }
-                    }
-                }
-            }
+            await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _provider);
             _log.LogInformation($"{_config["name"]} started!");
         }
     }
