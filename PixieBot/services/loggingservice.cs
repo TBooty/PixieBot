@@ -5,9 +5,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace PixieBot.Services
@@ -33,11 +30,6 @@ namespace PixieBot.Services
         {
             return Task.CompletedTask;
 
-        }
-        public async void LogMessage(string message)
-        {
-            var logmsg = new LogMessage(LogSeverity.Info, "Debug", message);
-            await OnLogAsync(logmsg);
         }
         private async Task<Task> OnLogAsync(LogMessage msg)
         {

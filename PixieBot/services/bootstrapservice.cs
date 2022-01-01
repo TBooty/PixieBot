@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace PixieBot.Services
 {
@@ -13,20 +15,20 @@ namespace PixieBot.Services
         private readonly IServiceProvider _provider;
         private readonly DiscordSocketClient _discord;
         private readonly CommandService _commands;
-        private readonly LoggingService _log;
+        private readonly Microsoft.Extensions.Logging.ILogger _log;
 
         public BootstrapService(
            IConfigurationRoot config,
            IServiceProvider provider,
            DiscordSocketClient discord,
            CommandService commands,
-           LoggingService log)
+           IServiceProvider services)
         {
             _config = config;
             _provider = provider;
             _discord = discord;
             _commands = commands;
-            _log = log;
+            _log = services.GetRequiredService<ILogger<BootstrapService>>();
         }
 
         public async Task StartAsync()
@@ -37,7 +39,7 @@ namespace PixieBot.Services
             {
                 throw new Exception("No discord tokens found in environment variables");
             }
-            _log.LogMessage($"{_config["name"]} starting up...");
+            _log.LogInformation($"{_config["name"]} starting up...");
 
             // Login to discord
             await _discord.LoginAsync(Discord.TokenType.Bot, discordToken);
@@ -61,7 +63,7 @@ namespace PixieBot.Services
                     }
                 }
             }
-            _log.LogMessage($"{_config["name"]} started!");
+            _log.LogInformation($"{_config["name"]} started!");
         }
     }
 }

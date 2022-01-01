@@ -1,4 +1,6 @@
 ﻿using Discord.WebSocket;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using PixieBot.Services;
 using System;
 using System.Collections.Concurrent;
@@ -17,13 +19,13 @@ namespace PixieBot.Services
         private readonly LavaNode _lavaNode;
         public readonly HashSet<ulong> VoteQueue;
         private readonly ConcurrentDictionary<ulong, CancellationTokenSource> _disconnectTokens;
-        private readonly LoggingService _log;
+        private readonly Microsoft.Extensions.Logging.ILogger _log;
         private readonly DiscordSocketClient _client;
 
-        public AudioService(DiscordSocketClient client, LavaNode lavaNode, LoggingService log)
+        public AudioService(DiscordSocketClient client, LavaNode lavaNode, IServiceProvider services)
         {
             _client = client;
-            _log = log;
+            _log = services.GetRequiredService<ILogger<AudioService>>();
             _lavaNode = lavaNode;
             _disconnectTokens = new ConcurrentDictionary<ulong, CancellationTokenSource>();
             _lavaNode.OnPlayerUpdated += OnPlayerUpdated;
@@ -44,18 +46,13 @@ namespace PixieBot.Services
 
         private Task OnPlayerUpdated(PlayerUpdateEventArgs arg)
         {
-            //TODO heck for null
-            if(arg.Track != null)
-            {
-
-            }
-            _log.LogMessage($"Track update received for {arg}");
+            _log.LogInformation($"Track update received for @arg", arg);
             return Task.CompletedTask;
         }
 
         private Task OnStatsReceived(StatsEventArgs arg)
         {
-            _log.LogMessage($"Lavalink has been up for {arg?.Uptime}. CPU Usage: {arg?.Cpu.LavalinkLoad}%. Memory Usage:{arg?.Memory.Used}");
+            _log.LogInformation($"Lavalink has been up for {arg?.Uptime}. CPU Usage: {arg?.Cpu.LavalinkLoad}%. Memory Usage:{arg?.Memory.Used}");
             return Task.CompletedTask;
         }
 
@@ -127,7 +124,7 @@ namespace PixieBot.Services
 
         private async Task OnTrackException(TrackExceptionEventArgs arg)
         {
-            _log.LogMessage($"Track {arg.Track.Title} threw an exception. Please check Lavalink console/logs.");
+            _log.LogError($"Track {arg.Track.Title} threw an exception. Please check Lavalink console/logs.");
             arg.Player.Queue.Enqueue(arg.Track);
             await arg.Player.TextChannel.SendMessageAsync(
                 $"{arg.Track.Title} has been re-added to queue after throwing an exception.");
@@ -135,7 +132,7 @@ namespace PixieBot.Services
 
         private async Task OnTrackStuck(TrackStuckEventArgs arg)
         {
-            _log.LogMessage(
+            _log.LogError(
                 $"Track {arg.Track.Title} got stuck for {arg.Threshold}ms. Please check Lavalink console/logs.");
             arg.Player.Queue.Enqueue(arg.Track);
             await arg.Player.TextChannel.SendMessageAsync(
@@ -144,7 +141,7 @@ namespace PixieBot.Services
 
         private Task OnWebSocketClosed(WebSocketClosedEventArgs arg)
         {
-            _log.LogMessage($"Discord WebSocket connection closed with following reason: {arg.Reason}");
+            _log.LogError($"Discord WebSocket connection closed with following reason: {arg.Reason}");
             return Task.CompletedTask;
         }
     }
