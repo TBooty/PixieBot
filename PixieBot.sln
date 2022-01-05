@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31729.503
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32014.148
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PixieBot", "PixieBot\PixieBot.csproj", "{99D2F34F-5FCD-4A12-9FC2-DB3112C6CC8A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PixieBot", "PixieBot\PixieBot.csproj", "{99D2F34F-5FCD-4A12-9FC2-DB3112C6CC8A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,4 +1,5 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PixieBot.Services;
@@ -42,6 +43,7 @@ namespace PixieBot.Services
         private async Task ClientReadyAsync()
         {
             await _lavaNode.ConnectAsync();
+            _log.LogInformation($"Connected to Audio Service");
         }
 
         private Task OnPlayerUpdated(PlayerUpdateEventArgs arg)
@@ -58,7 +60,6 @@ namespace PixieBot.Services
 
         private async Task OnTrackStarted(TrackStartEventArgs arg)
         {
-            await arg.Player.TextChannel.SendMessageAsync($"Now playing: {arg.Track.Title}");
             if (!_disconnectTokens.TryGetValue(arg.Player.VoiceChannel.Id, out var value))
             {
                 return;
@@ -145,4 +146,5 @@ namespace PixieBot.Services
             return Task.CompletedTask;
         }
     }
+
 }
