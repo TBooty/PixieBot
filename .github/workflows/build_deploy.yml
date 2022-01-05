@@ -24,8 +24,8 @@ jobs:
         uses: aws-actions/configure-aws-credentials@13d241b293754004c80624b5567555c4a39ffbe3
         with:
           role-to-assume: arn:aws:iam::731033992095:role/github-actions-role
-            role-duration-seconds: 900 # the ttl of the session, in seconds.
-            aws-region: us-east-2 # use your region here.
+          role-duration-seconds: 900 # the ttl of the session, in seconds.
+          aws-region: us-east-2 # use your region here.
 
       - name: Login to Amazon ECR
         id: login-ecr
