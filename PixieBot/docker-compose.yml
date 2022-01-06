@@ -14,8 +14,8 @@ services:
       - ./lava_application.yml:/opt/Lavalink/application.yml
 
   pixiebot:
-    build: .
-    image: pixiebot:latest
+    build: $ECR_REPOSITORY:$IMAGE_TAG
+    image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
     restart: always
     logging:
       driver: awslogs
