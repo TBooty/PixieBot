@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Reflection;
 using System.Threading.Tasks;
 using Victoria;
@@ -15,12 +16,17 @@ namespace PixieBot
 {
     public class Bootstrap
     {
+        private const string _culture = "en-US";
         public Bootstrap(string[] args)
         {
             Console.Out.WriteLineAsync("Bot Name:          " + "Pixie");
             Console.Out.WriteLineAsync("Bot Version:       " + FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion);
             Console.Out.WriteLineAsync("Bot Prefix:        " + Environment.GetEnvironmentVariable("bot_prefix"));
             Console.Out.WriteLineAsync($"Meow");
+            var cultureInfo = new CultureInfo(_culture);
+            CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
+            CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
+            Console.Out.WriteLineAsync("Bot Culture:       " + _culture);
         }
 
         public static async Task RunAsync(string[] args)
