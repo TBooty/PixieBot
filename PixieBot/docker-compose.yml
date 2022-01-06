@@ -15,6 +15,7 @@ services:
 
   pixiebot:
     build: .
+    image: pixiebot:latest
     restart: always
     logging:
       driver: awslogs
