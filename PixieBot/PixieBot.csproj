@@ -19,10 +19,4 @@
     <PackageReference Include="Victoria" Version="5.2.5" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="config\pixie.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>

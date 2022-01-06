@@ -1,7 +1,6 @@
 ﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -15,7 +14,7 @@ namespace PixieBot.Services
         private readonly CommandService _commands;
         private readonly ILogger _logger;
 
-        public LoggingService(DiscordSocketClient discord, CommandService commands, IConfigurationRoot config, IServiceProvider services)
+        public LoggingService(DiscordSocketClient discord, CommandService commands, IServiceProvider services)
         {
             _logger = services.GetRequiredService<ILogger<LoggingService>>();
             _discord = discord;

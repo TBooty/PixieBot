@@ -17,16 +17,14 @@ namespace PixieBot.Modules
 {
     public class AutomationModule : ModuleBase<SocketCommandContext>
     {
-        private readonly IConfigurationRoot _config;
         private readonly DiscordSocketClient _discord;
         private readonly CommandService _commands;
         private readonly HttpService _httpService;
         private readonly string _goveeApiKey;
         private readonly ILogger _log;
 
-        public AutomationModule(IConfigurationRoot config, DiscordSocketClient discord, CommandService commands, HttpService httpService, IServiceProvider services)
+        public AutomationModule(DiscordSocketClient discord, CommandService commands, HttpService httpService, IServiceProvider services)
         {
-            _config = config;
             _discord = discord;
             _commands = commands;
             _httpService = httpService;

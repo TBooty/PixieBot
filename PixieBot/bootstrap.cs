@@ -15,15 +15,8 @@ namespace PixieBot
 {
     public class Bootstrap
     {
-        private string _configFile = "config//pixie.json";
-        public IConfigurationRoot Configuration { get; }
         public Bootstrap(string[] args)
         {
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(AppContext.BaseDirectory)
-                .AddJsonFile(_configFile);
-            Configuration = builder.Build();
-
             Console.Out.WriteLineAsync("Bot Name:          " + "Pixie");
             Console.Out.WriteLineAsync("Bot Version:       " + FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion);
             Console.Out.WriteLineAsync("Bot Prefix:        " + Environment.GetEnvironmentVariable("bot_prefix"));
@@ -97,8 +90,7 @@ namespace PixieBot
             .AddSingleton<Services.HttpService>()
             .AddSingleton<Services.AudioService>()
             .AddSingleton<LavaNode>()
-            .AddSingleton<LavaConfig>()
-            .AddSingleton(Configuration);
+            .AddSingleton<LavaConfig>();
         }
     }
 }
