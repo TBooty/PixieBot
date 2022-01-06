@@ -1,4 +1,4 @@
-FROM openjdk:10-jre-slim
+FROM openjdk:11-jre-slim
 
 WORKDIR /opt/Lavalink
 
@@ -8,3 +8,6 @@ COPY lava_application.yml application.yml
 EXPOSE 2333
 
 CMD ["java", "-jar", "Lavalink.jar"]
+
+
+
