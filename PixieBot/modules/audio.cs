@@ -238,27 +238,6 @@ namespace PixieBot.Modules
                 return;
             }
 
-            var voiceChannelUsers = (player.VoiceChannel as SocketVoiceChannel)?.Users
-                .Where(x => !x.IsBot)
-                .ToArray();
-
-            if (_audioService.VoteQueue.Contains(Context.User.Id))
-            {
-                await ReplyAsync("You can't vote again.");
-                return;
-            }
-
-            _audioService.VoteQueue.Add(Context.User.Id);
-            if (voiceChannelUsers != null)
-            {
-                var percentage = _audioService.VoteQueue.Count / voiceChannelUsers.Length * 100;
-                if (percentage < 85)
-                {
-                    await ReplyAsync("You need more than 85% votes to skip this song.");
-                    return;
-                }
-            }
-
             try
             {
                 var (oldTrack, currenTrack) = await player.SkipAsync();
@@ -269,57 +248,8 @@ namespace PixieBot.Modules
                 _log.LogError(exception: exception, message: "Failed to skip track");
                 await ReplyAsync("Failed to skip track");
             }
-
-            _audioService.VoteQueue.Clear();
         }
 
-        [Command("Seek")]
-        public async Task SeekAsync(TimeSpan timeSpan)
-        {
-            if (!_lavaNode.TryGetPlayer(Context.Guild, out var player))
-            {
-                await ReplyAsync("I'm not connected to a voice channel.");
-                return;
-            }
-
-            if (player.PlayerState != PlayerState.Playing)
-            {
-                await ReplyAsync("No current track playing");
-                return;
-            }
-
-            try
-            {
-                await player.SeekAsync(timeSpan);
-                await ReplyAsync($"I've seeked `{player.Track.Title}` to {timeSpan}.");
-            }
-            catch (Exception exception)
-            {
-                _log.LogError(exception: exception, message: "Failed to seek track");
-                await ReplyAsync("Failed to seek track");
-            }
-        }
-
-        [Command("Volume")]
-        public async Task VolumeAsync(ushort volume)
-        {
-            if (!_lavaNode.TryGetPlayer(Context.Guild, out var player))
-            {
-                await ReplyAsync("I'm not connected to a voice channel.");
-                return;
-            }
-
-            try
-            {
-                await player.UpdateVolumeAsync(volume);
-                await ReplyAsync($"I've changed the player volume to {volume}.");
-            }
-            catch (Exception exception)
-            {
-                _log.LogError(exception: exception, message: "Failed to change volume");
-                await ReplyAsync("Failed to change volume");
-            }
-        }
 
         [Command("NowPlaying"), Alias("Np")]
         public async Task NowPlayingAsync()
@@ -372,30 +302,6 @@ namespace PixieBot.Modules
             await SendLyricsAsync(lyrics);
         }
 
-        [Command("OVH", RunMode = RunMode.Async)]
-        public async Task ShowOvhLyrics()
-        {
-            if (!_lavaNode.TryGetPlayer(Context.Guild, out var player))
-            {
-                await ReplyAsync("I'm not connected to a voice channel.");
-                return;
-            }
-
-            if (player.PlayerState != PlayerState.Playing)
-            {
-                await ReplyAsync("No current track playing");
-                return;
-            }
-
-            var lyrics = await player.Track.FetchLyricsFromOvhAsync();
-            if (string.IsNullOrWhiteSpace(lyrics))
-            {
-                await ReplyAsync($"No lyrics found for {player.Track.Title}");
-                return;
-            }
-
-            await SendLyricsAsync(lyrics);
-        }
 
         [Command("Queue")]
         public Task QueueAsync()
@@ -405,6 +311,19 @@ namespace PixieBot.Modules
                 return ReplyAsync("I'm not connected to a voice channel.");
             }
 
+            return ReplyAsync(player.PlayerState != PlayerState.Playing
+                ? "There's nothing in queue to display"
+                : string.Join(Environment.NewLine, player.Queue.Select(x => x.Title)));
+        }
+
+        [Command("ClearQueue")]
+        public Task ClearQueueAsync()
+        {
+            if (!_lavaNode.TryGetPlayer(Context.Guild, out var player))
+            {
+                return ReplyAsync("I'm not connected to a voice channel.");
+            }
+            player.Queue.Clear();
             return ReplyAsync(player.PlayerState != PlayerState.Playing
                 ? "There's nothing in queue to display"
                 : string.Join(Environment.NewLine, player.Queue.Select(x => x.Title)));
