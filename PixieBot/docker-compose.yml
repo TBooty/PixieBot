@@ -1,0 +1,24 @@
+version: '3.1'
+
+services:
+  lavalink:
+    container_name: lavalink
+    image: fredboat/lavalink:master
+    ports:
+      - 2333:2333
+    restart: always
+    volumes:
+      - ./application.yml:/opt/Lavalink/application.yml
+
+
+  pixiebot:
+    build: .
+    container_name: pixiebot
+    image: pixiebot:latest
+    restart: always
+    environment:
+      - bot_prefix=~
+      - govee_api_key=${govee_api_key}
+      - discord_token=${discord_token}
+    depends_on:
+        - lavalink

@@ -1,7 +1,7 @@
 ﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
-using Microsoft.Extensions.Configuration;
+using Discord.Interactions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -47,7 +47,7 @@ namespace PixieBot
 
             var provider = services.BuildServiceProvider();
             provider.GetRequiredService<Services.LoggingService>();
-            provider.GetRequiredService<Services.CommandHandler>();
+            await provider.GetRequiredService<Services.CommandHandler>().InitializeAsync();
 
             await ConnectBotToDiscord(provider);
             await Task.Delay(-1);
@@ -58,7 +58,7 @@ namespace PixieBot
             var _log = services.GetRequiredService<ILogger<Bootstrap>>();
             var discord = services.GetRequiredService<DiscordSocketClient>();
             var command_service = services.GetRequiredService<CommandService>();
-
+            var interactionService = services.GetRequiredService<InteractionService>();
             // Get the discord token from environment variables
             string discordToken = Environment.GetEnvironmentVariable("discord_token");
             if (string.IsNullOrWhiteSpace(discordToken))
@@ -73,6 +73,18 @@ namespace PixieBot
             // Connect to the websocket
             await discord.StartAsync();
 
+
+            discord.Ready += async () =>
+            {
+                if (IsDebug())
+                {
+                    await interactionService.RegisterCommandsToGuildAsync(552867282364268550);
+                }
+                else
+                {
+                    await interactionService.RegisterCommandsGloballyAsync(true);
+                }
+            };
             // Load commands and modules into the command service
             await command_service.AddModulesAsync(Assembly.GetEntryAssembly(), services);
             _log.LogInformation($"Pixie bot started!");
@@ -88,15 +100,38 @@ namespace PixieBot
             .AddSingleton(new CommandService(new CommandServiceConfig
             {
                 LogLevel = LogSeverity.Verbose,
-                DefaultRunMode = RunMode.Async,
+                DefaultRunMode = Discord.Commands.RunMode.Async,
             }))
             .AddSingleton<Services.CommandHandler>()
+            .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
             .AddLogging(configure => configure.AddSerilog())
             .AddSingleton<Services.LoggingService>()
             .AddSingleton<Services.HttpService>()
-            .AddSingleton<Services.AudioService>()
-            .AddSingleton<LavaNode>()
-            .AddSingleton<LavaConfig>();
+            .AddSingleton<Modules.AudioSlash>()
+            .AddSingleton<LavaNode>();
+
+            if(IsDebug())
+            {
+                services.AddSingleton<LavaConfig>();
+            }
+            else
+            {
+                var config = new LavaConfig()
+                {
+                    Hostname = "lavalink",
+                    Port = 2333
+                };
+                services.AddSingleton<LavaConfig>(config);
+            }
+        }
+
+        static bool IsDebug()
+        {
+#if DEBUG
+            return true;
+#else
+                return false;
+#endif
         }
     }
 }

@@ -1,6 +1,8 @@
 ﻿using Discord.Commands;
+using Discord.Interactions;
 using Discord.WebSocket;
 using System;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace PixieBot.Services
@@ -10,19 +12,145 @@ namespace PixieBot.Services
         private readonly IServiceProvider _provider;
         private readonly DiscordSocketClient _discord;
         private readonly CommandService _commands;
+        private readonly InteractionService _interactionService;
         private readonly string _commandPrefix;
         public CommandHandler(
             IServiceProvider provider,
             DiscordSocketClient discord,
-            CommandService commands)
+            CommandService commands,
+            InteractionService interactionServivce)
         {
             _provider = provider;
             _discord = discord;
             _commands = commands;
+            _interactionService = interactionServivce; 
             _commandPrefix = Environment.GetEnvironmentVariable("bot_prefix");
-
             _discord.MessageReceived += OnMessageReceivedAsync;
+            
+
+
         }
+
+        public async Task InitializeAsync()
+        {
+            // Add the public modules that inherit InteractionModuleBase<T> to the InteractionService
+            await _interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), _provider);
+
+            // Process the InteractionCreated payloads to execute Interactions commands
+            _discord.InteractionCreated += HandleInteraction;
+
+            // Process the command execution results 
+            _interactionService.SlashCommandExecuted += SlashCommandExecuted;
+            _interactionService.ContextCommandExecuted += ContextCommandExecuted;
+            _interactionService.ComponentCommandExecuted += ComponentCommandExecuted;
+        }
+
+        private Task ComponentCommandExecuted(ComponentCommandInfo arg1, Discord.IInteractionContext arg2, Discord.Interactions.IResult arg3)
+        {
+            if (!arg3.IsSuccess)
+            {
+                switch (arg3.Error)
+                {
+                    case InteractionCommandError.UnmetPrecondition:
+                        // implement
+                        break;
+                    case InteractionCommandError.UnknownCommand:
+                        // implement
+                        break;
+                    case InteractionCommandError.BadArgs:
+                        // implement
+                        break;
+                    case InteractionCommandError.Exception:
+                        // implement
+                        break;
+                    case InteractionCommandError.Unsuccessful:
+                        // implement
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private Task ContextCommandExecuted(ContextCommandInfo arg1, Discord.IInteractionContext arg2, Discord.Interactions.IResult arg3)
+        {
+            if (!arg3.IsSuccess)
+            {
+                switch (arg3.Error)
+                {
+                    case InteractionCommandError.UnmetPrecondition:
+                        // implement
+                        break;
+                    case InteractionCommandError.UnknownCommand:
+                        // implement
+                        break;
+                    case InteractionCommandError.BadArgs:
+                        // implement
+                        break;
+                    case InteractionCommandError.Exception:
+                        // implement
+                        break;
+                    case InteractionCommandError.Unsuccessful:
+                        // implement
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private Task SlashCommandExecuted(SlashCommandInfo arg1, Discord.IInteractionContext arg2, Discord.Interactions.IResult arg3)
+        {
+            if (!arg3.IsSuccess)
+            {
+                switch (arg3.Error)
+                {
+                    case InteractionCommandError.UnmetPrecondition:
+                        // implement
+                        break;
+                    case InteractionCommandError.UnknownCommand:
+                        // implement
+                        break;
+                    case InteractionCommandError.BadArgs:
+                        // implement
+                        break;
+                    case InteractionCommandError.Exception:
+                        // implement
+                        break;
+                    case InteractionCommandError.Unsuccessful:
+                        // implement
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private async Task HandleInteraction(SocketInteraction arg)
+        {
+            try
+            {
+                // Create an execution context that matches the generic type parameter of your InteractionModuleBase<T> modules
+                var ctx = new SocketInteractionContext(_discord, arg);
+                await _interactionService.ExecuteCommandAsync(ctx, _provider);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+
+                // If a Slash Command execution fails it is most likely that the original interaction acknowledgement will persist. It is a good idea to delete the original
+                // response, or at least let the user know that something went wrong during the command execution.
+                if (arg.Type == Discord.InteractionType.ApplicationCommand)
+                    await arg.GetOriginalResponseAsync().ContinueWith(async (msg) => await msg.Result.DeleteAsync());
+            }
+        }
+
 
 
         private async Task OnMessageReceivedAsync(SocketMessage s)
