@@ -3,7 +3,6 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using PixieBot.Services;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -342,6 +341,7 @@ namespace PixieBot.Modules
             await SendLyricsAsync(lyrics);
         }
 
+        #region private methods and delegates
         private async Task SendLyricsAsync(string lyrics)
         {
             var splitLyrics = lyrics.Split(Environment.NewLine);
@@ -473,5 +473,6 @@ namespace PixieBot.Modules
             _log.LogError($"Discord WebSocket connection closed with following reason: {arg.Reason}");
             return Task.CompletedTask;
         }
+        #endregion
     }
 }
