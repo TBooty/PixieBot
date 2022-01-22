@@ -26,7 +26,6 @@ namespace PixieBot.Services
             _interactionService = interactionServivce; 
             _commandPrefix = Environment.GetEnvironmentVariable("bot_prefix");
             _discord.MessageReceived += OnMessageReceivedAsync;
-            
 
 
         }
@@ -43,7 +42,18 @@ namespace PixieBot.Services
             _interactionService.SlashCommandExecuted += SlashCommandExecuted;
             _interactionService.ContextCommandExecuted += ContextCommandExecuted;
             _interactionService.ComponentCommandExecuted += ComponentCommandExecuted;
+            _discord.ButtonExecuted += async (interaction) =>
+            {
+                var ctx = new SocketInteractionContext<SocketMessageComponent>(_discord, interaction);
+                await _interactionService.ExecuteCommandAsync(ctx, _provider);
+            };
+            _discord.SelectMenuExecuted += async (interaction) =>
+            {
+                var ctx = new SocketInteractionContext<SocketMessageComponent>(_discord, interaction);
+                await _interactionService.ExecuteCommandAsync(ctx, _provider);
+            };
         }
+
 
         private Task ComponentCommandExecuted(ComponentCommandInfo arg1, Discord.IInteractionContext arg2, Discord.Interactions.IResult arg3)
         {

@@ -3,16 +3,15 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using PixieBot.Services;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Victoria;
 using Victoria.Enums;
-using Victoria.EventArgs;
 using Victoria.Responses.Search;
 
 namespace PixieBot.Modules
@@ -24,55 +23,70 @@ namespace PixieBot.Modules
         private readonly LavaNode _lavaNode;
         private static readonly IEnumerable<int> Range = Enumerable.Range(1900, 2000);
         private readonly ILogger _log;
-        public readonly HashSet<ulong> VoteQueue;
-        private readonly ConcurrentDictionary<ulong, CancellationTokenSource> _disconnectTokens;
-        private readonly DiscordSocketClient _client;
+        private AudioService _service;
+        private DiscordSocketClient _discord;
+        public static string _pixieGreetingLink = "https://www.youtube.com/watch?v=kpfoFp3CSfU";
 
-        public AudioSlash(LavaNode lavaNode, DiscordSocketClient client, IServiceProvider services)
+
+        public AudioSlash(LavaNode lavaNode, IServiceProvider services, AudioService service)
         {
-            _client = client;
             _log = services.GetRequiredService<ILogger<AudioSlash>>();
+            _discord = services.GetRequiredService<DiscordSocketClient>();
             _lavaNode = lavaNode;
-            _disconnectTokens = new ConcurrentDictionary<ulong, CancellationTokenSource>();
-            _lavaNode.OnPlayerUpdated += OnPlayerUpdated;
-            _lavaNode.OnStatsReceived += OnStatsReceived;
-            _lavaNode.OnTrackEnded += OnTrackEnded;
-            _lavaNode.OnTrackStarted += OnTrackStarted;
-            _lavaNode.OnTrackException += OnTrackException;
-            _lavaNode.OnTrackStuck += OnTrackStuck;
-            _lavaNode.OnWebSocketClosed += OnWebSocketClosed;
-            _client.Ready += ClientReadyAsync;
-        }
-
-
-        [SlashCommand("ping", "Recieve a pong")]
-        public async Task Ping()
-        {
-            await RespondAsync("pong");
+            _service = service;
         }
 
         [SlashCommand("play", "Plays a song via youtube link")]
-        public async Task PlayAsync([Summary(description: "mention the user")] string seacrchString)
+        public async Task PlaySongAsync([Summary(description: "the youtube link")] string searchString)
         {
-            if (string.IsNullOrWhiteSpace(seacrchString))
+            await PlayAsync(searchString);
+        }
+
+        private async Task PlayAsync(string searchString)
+        {
+            bool joined_voice = await JoinVoiceAsync();
+            if (!joined_voice)
             {
-                await RespondAsync("Please provide search terms.");
+                await RespondAsync("Couldn't play song as we're not connected to any voice channel");
                 return;
             }
 
-            if (!_lavaNode.HasPlayer(Context.Guild))
-            {
-                await RespondAsync("I'm not connected to a voice channel.");
-                return;
-            }
 
-            var searchResponse = await _lavaNode.SearchAsync(SearchType.Direct, seacrchString);
-            if (searchResponse.Status is SearchStatus.LoadFailed or SearchStatus.NoMatches)
-            {
-                await RespondAsync($"I wasn't able to find anything for `{seacrchString}`.");
-                return;
-            }
+            //Default to searching words from youtube
+            SearchType searchType = SearchType.YouTube;
 
+            //if link contains a list parameter, pull the id from the list and search direct
+            if (searchString.Contains("youtube") && searchString.Contains("list="))
+            {
+                var blah = searchString.IndexOf("list=");
+                searchString = searchString.Substring(blah, searchString.Length - blah);
+                searchString = searchString.Split("=")[1];
+                searchType = SearchType.Direct;
+            }
+            
+            //if passed a link, just look it up as direct
+            if (Uri.IsWellFormedUriString(searchString, UriKind.Absolute))
+            {
+                searchType = SearchType.Direct;
+            }
+            var searchResponse = await _lavaNode.SearchAsync(searchType, searchString);
+            switch (searchResponse.Status)
+            {
+                case SearchStatus.LoadFailed:
+                case SearchStatus.NoMatches:
+                    await RespondAsync($"I wasn't able to find anything for `{searchString}`.");
+                    break;
+                case SearchStatus.SearchResult:
+                    var button_builder = new ComponentBuilder();
+                    foreach (var track in searchResponse.Tracks.Take(5))
+                    {
+                        button_builder.WithButton(track.Title, track.Url, ButtonStyle.Primary);
+                    }
+                    var buttons = button_builder.Build();
+                    await RespondAsync($"Found the following 5 results for {searchString} Click the button to add it to the queue", components: buttons,
+                        ephemeral: true);
+                    break;
+            }
             var player = _lavaNode.GetPlayer(Context.Guild);
             if (!string.IsNullOrWhiteSpace(searchResponse.Playlist.Name))
             {
@@ -315,7 +329,32 @@ namespace PixieBot.Modules
             }
         }
 
+        private async Task<bool> JoinVoiceAsync()
+        {
+            if (_lavaNode.HasPlayer(Context.Guild))
+            {
+                _log.LogInformation("I'm already connected to a voice channel!");
+                return true;
+            }
 
+            var voiceState = Context.User as IVoiceState;
+            if (voiceState?.VoiceChannel == null)
+            {
+                _log.LogWarning("You must be connected to a voice channel!");
+                return false;
+            }
+
+            try
+            {
+                await _lavaNode.JoinAsync(voiceState.VoiceChannel, Context.Channel as ITextChannel);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                _log.LogError(exception: exception, message: "Failed to join voice channel");
+            }
+            return false;
+        }
 
         [SlashCommand("genius", "Displays the lyrics for the current song", runMode: RunMode.Async)]
         public async Task ShowGeniusLyrics()
@@ -341,7 +380,6 @@ namespace PixieBot.Modules
             await SendLyricsAsync(lyrics);
         }
 
-        #region private methods and delegates
         private async Task SendLyricsAsync(string lyrics)
         {
             var splitLyrics = lyrics.Split(Environment.NewLine);
@@ -366,113 +404,5 @@ namespace PixieBot.Modules
 
             await RespondAsync($"```{stringBuilder}```");
         }
-
-
-        private async Task ClientReadyAsync()
-        {
-            await _lavaNode.ConnectAsync();
-            _log.LogInformation($"Connected to Audio Service");
-        }
-
-        private Task OnPlayerUpdated(PlayerUpdateEventArgs arg)
-        {
-            _log.LogInformation($"Track update received for @arg", arg);
-            return Task.CompletedTask;
-        }
-
-        private Task OnStatsReceived(StatsEventArgs arg)
-        {
-            _log.LogInformation($"Lavalink has been up for {arg?.Uptime}. CPU Usage: {arg?.Cpu.LavalinkLoad}%. Memory Usage:{arg?.Memory.Used}");
-            return Task.CompletedTask;
-        }
-
-        private async Task OnTrackStarted(TrackStartEventArgs arg)
-        {
-            if (!_disconnectTokens.TryGetValue(arg.Player.VoiceChannel.Id, out var value))
-            {
-                return;
-            }
-
-            if (value.IsCancellationRequested)
-            {
-                return;
-            }
-
-            value.Cancel(true);
-            await arg.Player.TextChannel.SendMessageAsync("Auto disconnect has been cancelled!");
-        }
-
-        private async Task OnTrackEnded(TrackEndedEventArgs args)
-        {
-            if (args.Reason != TrackEndReason.Finished)
-            {
-                return;
-            }
-
-            var player = args.Player;
-            if (!player.Queue.TryDequeue(out var lavaTrack))
-            {
-                //set time out higher here
-                await player.TextChannel.SendMessageAsync("Queue completed! Add some more tracks before I find something better to do.");
-                _ = InitiateDisconnectAsync(args.Player, TimeSpan.FromSeconds(120));
-                return;
-            }
-
-            if (lavaTrack is null)
-            {
-                await player.TextChannel.SendMessageAsync("Next item in queue is not a track.");
-                return;
-            }
-
-            await args.Player.PlayAsync(lavaTrack);
-        }
-
-        private async Task InitiateDisconnectAsync(LavaPlayer player, TimeSpan timeSpan)
-        {
-            if (!_disconnectTokens.TryGetValue(player.VoiceChannel.Id, out var value))
-            {
-                value = new CancellationTokenSource();
-                _disconnectTokens.TryAdd(player.VoiceChannel.Id, value);
-            }
-            else if (value.IsCancellationRequested)
-            {
-                _disconnectTokens.TryUpdate(player.VoiceChannel.Id, new CancellationTokenSource(), value);
-                value = _disconnectTokens[player.VoiceChannel.Id];
-            }
-
-            await player.TextChannel.SendMessageAsync($"Auto disconnect initiated! Disconnecting in {timeSpan}...");
-            var isCancelled = SpinWait.SpinUntil(() => value.IsCancellationRequested, timeSpan);
-            if (isCancelled)
-            {
-                return;
-            }
-
-            await _lavaNode.LeaveAsync(player.VoiceChannel);
-            await player.TextChannel.SendMessageAsync("Leaving this voice channel.. Don't bother me again!");
-        }
-
-        private async Task OnTrackException(TrackExceptionEventArgs arg)
-        {
-            _log.LogError($"Track {arg.Track.Title} threw an exception. Please check Lavalink console/logs.");
-            arg.Player.Queue.Enqueue(arg.Track);
-            await arg.Player.TextChannel.SendMessageAsync(
-                $"{arg.Track.Title} has been re-added to queue after throwing an exception.");
-        }
-
-        private async Task OnTrackStuck(TrackStuckEventArgs arg)
-        {
-            _log.LogError(
-                $"Track {arg.Track.Title} got stuck for {arg.Threshold}ms. Please check Lavalink console/logs.");
-            arg.Player.Queue.Enqueue(arg.Track);
-            await arg.Player.TextChannel.SendMessageAsync(
-                $"{arg.Track.Title} has been re-added to queue after getting stuck.");
-        }
-
-        private Task OnWebSocketClosed(WebSocketClosedEventArgs arg)
-        {
-            _log.LogError($"Discord WebSocket connection closed with following reason: {arg.Reason}");
-            return Task.CompletedTask;
-        }
-        #endregion
     }
 }

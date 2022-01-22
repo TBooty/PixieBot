@@ -107,7 +107,7 @@ namespace PixieBot
             .AddLogging(configure => configure.AddSerilog())
             .AddSingleton<Services.LoggingService>()
             .AddSingleton<Services.HttpService>()
-            .AddSingleton<Modules.AudioSlash>()
+            .AddSingleton<Services.AudioService>()
             .AddSingleton<LavaNode>();
 
             if(IsDebug())

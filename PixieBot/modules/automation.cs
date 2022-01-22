@@ -26,7 +26,6 @@ namespace PixieBot.Modules
             _discord = discord;
             _commands = commands;
             _httpService = httpService;
-            _discord.ButtonExecuted += ButtonExecuted;
             _goveeApiKey = Environment.GetEnvironmentVariable("govee_api_key");
             _log = services.GetRequiredService<ILogger<AutomationModule>>();
         }
@@ -84,13 +83,6 @@ namespace PixieBot.Modules
 
             };
             var jsonData = _httpService.PostToUrlAsync(url, headers, stuff).Result;
-        }
-        private async Task ButtonExecuted(SocketMessageComponent component)
-        {
-            if (component.HasResponded == false)
-            {
-                await UpdateDevice(component.Data.CustomId);
-            }
         }
     }
 }
